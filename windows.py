@@ -1,6 +1,26 @@
 import curses, calendar, datetime
 import shared, days
 
+
+### Utility methods. ###
+
+"""
+Takes a date and returns a pretty string representation.
+"""
+def render_date(date):
+    end_digit = date.day % 10
+
+    if end_digit == 1 and date.day != 11:   end = "st"
+    elif end_digit == 2 and date.day != 12: end = "nd"
+    elif end_digit == 3 and date.day != 13: end = "rd"
+    else:                                   end = "th"
+
+    month_name = calendar.month_name[date.month]
+    weekday_name = calendar.day_name[(date.isoweekday() - 1 + 7) % 7]
+
+    return "{}, {} {}{}".format(
+        weekday_name, month_name, str(date.day), end)
+
 class Window():
     def __init__(self, height, width, startx, starty):
         self.width, self.height = width, height
@@ -20,22 +40,18 @@ class EventsWindow(Window):
         # The DaysWindow this window is looking at.
         self.days_window = days_window
 
+        # Beginning and ending hour to display (inclusive), in (0-23) format.
+        # Initialized to defaults. Will change when the window is scrolled.
+        self.start_of_view = 9
+        self.end_of_view = 23
+
     """
-    Takes a date and returns a pretty string representation.
+    Based on [start|end]_of_day, returns a list of strings in 12-hour format.
     """
-    def render_date(self, date):
-        end_digit = date.day % 10
-
-        if end_digit == 1 and date.day != 11:   end = "st"
-        elif end_digit == 2 and date.day != 12: end = "nd"
-        elif end_digit == 3 and date.day != 13: end = "rd"
-        else:                                   end = "th"
-
-        month_name = calendar.month_name[date.month]
-        weekday_name = calendar.day_name[(date.isoweekday() - 1 + 7) % 7]
-
-        return "{}, {} {}{}".format(
-            weekday_name, month_name, str(date.day), end)
+    def hour_strings(self):
+        # strftime("%I") has leading zeroes which we choose to strip.
+        return [datetime.time(i).strftime("%I").lstrip('0')
+                for i in range(self.start_of_view, self.end_of_view + 1)]
 
     """
     Draws the events for the currently selected day_obj onto this window.
@@ -43,15 +59,17 @@ class EventsWindow(Window):
     def draw(self):
         self.clear()
 
-        # A line of decoration, then the currently selected day.
-        text = self.render_date(shared.selected)
+        # A line of decoration, then the currently selected date.
+        text = render_date(shared.selected)
         self.addstr(0, 0, "." * len(text))
         self.addstr(1, 0, text)
 
-        # Draw hours.
-        for i in range(1, 16 + 1):
-            hour = i + 8
-            self.addstr(i*2, 0, str(hour - 12 if hour > 12 else hour))
+        # The header occupies lines 0 and 1, so space for events starts at 2.
+        VERT_OFFSET = 2
+
+        # Draw hour numbers along the side.
+        for i, hour_str in enumerate(self.hour_strings()):
+            self.addstr(VERT_OFFSET + i*2, 0, hour_str)
 
         # Does this day have events? (Has it been entered into the schedule?)
         if shared.selected in shared.schedule:
@@ -60,21 +78,42 @@ class EventsWindow(Window):
 
             # Draw each event.
             for (start, end), event in sorted(events.items()):
-                minutes_length = (
-                    (end.hour * 60 + end.minute)
-                    -
-                    (start.hour * 60 + start.minute)
+                length_in_minutes = (end.hour * 60 + end.minute
+                    - start.hour * 60 + start.minute
                     )
                 text = ("{} -- {}: {}").format(
                     start.strftime("%I:%M%p"), end.strftime("%I:%M%p"), event
                     )
-                start_position = 2 + ((start.hour - 9) * 60 + start.minute) // 30
-                self.addstr(start_position, 5, text)
+                
+                start_position = VERT_OFFSET + ((start.hour - self.start_of_view) * 60 + start.minute) // 30
+                # Draw the start text, if start_position is valid.
+                if start_position >= VERT_OFFSET:
+                    self.addstr(start_position, 5, text)
 
-                for i in range(0, round(minutes_length / 30)):
-                    self.addstr(start_position + i, 3, "*", curses.A_REVERSE)
+                # Draw the solid filler bar.
+                # round(a / b) is used over a // b for upwards rounding.
+                for i in range(0, round(length_in_minutes / 30)):
+                    # Check to make sure our position is valid.
+                    if start_position + i >= VERT_OFFSET:
+                        self.addstr(start_position + i, 3, " ", curses.A_REVERSE)
 
         self.refresh()
+
+    """
+    Handles scrolling up and down hours.
+    """
+    def handle_keypress(self, key):
+        if key in (ord('w'), ord('s')):
+            if key == ord('w'):
+                if self.start_of_view >= 1:
+                    self.start_of_view -= 1
+            if key == ord('s'):
+                if self.start_of_view <= 23:
+                    self.start_of_view += 1
+
+            # Different things are visible, so redraw.
+            self.draw()
+
 
 class HeaderWindow(Window):
     def __init__(self, *args, height):
@@ -133,7 +172,7 @@ class DaysWindow(Window):
             )
 
     """
-    Handles the keypress and returns False if we should stop, True otherwise.
+    Handles navigating around dates.
     """
     def handle_keypress(self, key):
         from curses import KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT
@@ -144,8 +183,8 @@ class DaysWindow(Window):
             if key == KEY_LEFT: self.change_day(-1)
             if key == KEY_RIGHT: self.change_day(1)
 
-        # The page and selected day object have changed, so redraw.
-        self.draw()
+            # The page and selected day object have changed, so redraw.
+            self.draw()
 
     """
     Draws all of the days in their positions on the window.

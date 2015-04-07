@@ -33,10 +33,11 @@ def main(stdscr):
 
         # Do stuff with the key.
         days_win.handle_keypress(key)
+        events_win.handle_keypress(key)
 
 if __name__ == "__main__":
     # Read the events in.
-    filename = os.path.dirname(os.path.realpath(__file__)) + "/schedule.txt"
+    filename = "test_schedule.txt"
     events.read_file(filename)
     
     curses.wrapper(main)
