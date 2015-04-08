@@ -31,13 +31,13 @@ def main(stdscr):
         # Wait for input.
         key = days_win.getch()
 
-        # Do stuff with the key.
+        # Send the input to the day and events windows for handling.
         days_win.handle_keypress(key)
         events_win.handle_keypress(key)
 
 if __name__ == "__main__":
     # Read the events in.
-    filename = "schedule.txt"
+    filename = "test_schedule.txt"
     events.read_file(filename)
     
     curses.wrapper(main)
