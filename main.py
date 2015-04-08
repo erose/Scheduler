@@ -37,7 +37,7 @@ def main(stdscr):
 
 if __name__ == "__main__":
     # Read the events in.
-    filename = "test_schedule.txt"
+    filename = "schedule.txt"
     events.read_file(filename)
     
     curses.wrapper(main)
