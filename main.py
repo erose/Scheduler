@@ -22,12 +22,12 @@ def main(stdscr):
     # Create the events window.
     events_win = windows.EventsWindow(days_win, days_win.height + 3, 0)
 
-    while True:
-        # Draw our windows.
-        days_win.draw()
-        header_win.draw()
-        events_win.draw()
+    # Draw everything once: redraws will be handled by the windows themselves.
+    days_win.draw()
+    header_win.draw()
+    events_win.draw()
 
+    while True:
         # Wait for input.
         key = days_win.getch()
 
