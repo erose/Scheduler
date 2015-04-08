@@ -101,7 +101,8 @@ class EventsWindow(Window):
 
             # Draw each event.
             for (start, end), event in sorted(events.items()):
-                length_in_minutes = (end.hour * 60 + end.minute
+                length_in_minutes = (
+                    end.hour * 60 + end.minute
                     - (start.hour * 60 + start.minute)
                     )
                 
@@ -171,10 +172,10 @@ class HeaderWindow(Window):
 class DaysWindow(Window):
     # The maximum height of any month.
     # It's top + four weeks in the middle + bottom.
-    max_month_height = 1 + 4 + 1
+    MAX_MONTH_HEIGHT = 1 + 4 + 1
 
     def __init__(self, *args):
-        super().__init__(DaysWindow.max_month_height, shared.space * 7, *args)
+        super().__init__(DaysWindow.MAX_MONTH_HEIGHT, shared.space * 7, *args)
 
         # Create a calendar object, with the first day of the week = Sunday (6).
         self.cal = calendar.Calendar(firstweekday = 6)
