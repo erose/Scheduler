@@ -1,25 +1,5 @@
 import curses, calendar, datetime
-import shared, days
-
-
-### Utility methods. ###
-
-"""
-Takes a date and returns a pretty string representation.
-"""
-def render_date(date):
-    end_digit = date.day % 10
-
-    if end_digit == 1 and date.day != 11:   end = "st"
-    elif end_digit == 2 and date.day != 12: end = "nd"
-    elif end_digit == 3 and date.day != 13: end = "rd"
-    else:                                   end = "th"
-
-    month_name = calendar.month_name[date.month]
-    weekday_name = calendar.day_name[(date.isoweekday() - 1 + 7) % 7]
-
-    return "{}, {} {}{}".format(
-        weekday_name, month_name, str(date.day), end)
+import shared
 
 class Window():
     def __init__(self, height, width, startx, starty):
@@ -41,7 +21,8 @@ class EventsWindow(Window):
         self.days_window = days_window
 
         # Beginning and ending hour to display (inclusive), in (0-23) format.
-        # Initialized to defaults. Will change when the window is scrolled.
+        # Defaults: 9am -- 11pm.
+        # These will change when the window is scrolled.
         self.start_of_view = 9
         self.end_of_view = 23
 
@@ -86,7 +67,7 @@ class EventsWindow(Window):
         self.clear()
 
         # A line of decoration, then the currently selected date.
-        text = render_date(shared.selected)
+        text = shared.render_date(shared.selected)
         self.addstr(0, 0, "." * len(text))
         self.addstr(1, 0, text)
 
@@ -138,9 +119,6 @@ class EventsWindow(Window):
             if key == ord('s'):
                 if self.start_of_view < 23:
                     self.start_of_view += 1
-
-            # The view has changed, so redraw.
-            self.draw()
 
 
 class HeaderWindow(Window):
@@ -210,9 +188,6 @@ class DaysWindow(Window):
             if key == KEY_DOWN: self.change_day(7)
             if key == KEY_LEFT: self.change_day(-1)
             if key == KEY_RIGHT: self.change_day(1)
-
-            # The page and selected day object have changed, so redraw.
-            self.draw()
 
     """
     Draws all of the days in their positions on the window.
